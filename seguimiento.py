@@ -95,11 +95,20 @@ async def followup_indeciso(ctx: ContextTypes.DEFAULT_TYPE):
     msg = mensajes[min(paso, len(mensajes) - 1)]
 
     try:
+        from database import Database
+        _db = Database()
+        if _db.obtener_ticket_pendiente(tid):
+            return  # Si ya tiene ticket pendiente o pagado, cancelamos
+
         await ctx.bot.send_message(tid, msg)
         # En el paso 1 (30 min) enviar el 20% extra de referencias
         if paso == 1:
             from main import enviar_refs_20
             await enviar_refs_20(ctx.bot, tid)
+            
+        # En el paso 3 (1 día), enviar la encuesta
+        if paso == 3:
+            await iniciar_encuesta(ctx.bot, tid)
     except Exception as e:
         logger.error(f"Followup error: {e}")
 

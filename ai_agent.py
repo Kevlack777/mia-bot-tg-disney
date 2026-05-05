@@ -48,6 +48,7 @@ REGLAS:
 4. Usa emojis con moderación, sé natural
 5. Si el cliente se frustra, sé empática
 6. Puedes recomendar contenido: "¿Ya viste [película]? Está buenísima 🎬"
+7. Si preguntan cada cuánto se paga, responde claramente que se paga cada mes.
 
 HISTORIAL DEL CLIENTE:
 {contexto}"""

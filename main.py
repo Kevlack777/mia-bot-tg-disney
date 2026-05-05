@@ -151,6 +151,13 @@ def ctx_cliente(tid):
     return " ".join(partes)
 
 
+async def refrescar_followup(ctx, uid):
+    """Resetea el tiempo de follow-up a 15 min si no tiene ticket."""
+    ticket = db.obtener_ticket_pendiente(uid)
+    if not ticket:
+        cancelar_followups(ctx, uid)
+        await programar_followup(ctx, uid, 0)
+
 def detectar_intencion(texto):
     t = texto.lower().strip()
     if any(p in t for p in ["ya pagué", "ya pague", "pagué", "pague", "hice el pago",
@@ -217,6 +224,8 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             "Pregúntame lo que quieras 🎬"
         )
     await update.message.reply_text(msg, parse_mode="Markdown")
+    if not ticket:
+        await refrescar_followup(ctx, user.id)
 
 
 async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -433,13 +442,10 @@ async def procesar(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         clientes_indecisos.discard(user.id)
         await entregar_cuenta(update, ctx); return
     if intent == "rechazo":
-        if user.id not in clientes_indecisos:
-            clientes_indecisos.add(user.id)
-            await update.message.reply_text("¡Sin problema! Si cambias de opinión estoy aquí 😊")
-            await programar_followup(ctx, user.id, 0)
-            await iniciar_encuesta(ctx.bot, user.id)
-        else:
-            await update.message.reply_text("¡Entendido! Cuando quieras, aquí estaré 😊")
+        cancelar_followups(ctx, user.id)
+        clientes_indecisos.discard(user.id)
+        await update.message.reply_text("¡Sin problema! Si cambias de opinión estoy aquí 😊")
+        await iniciar_encuesta(ctx.bot, user.id)
         return
     if intent == "referencias":
         await enviar_refs_80(ctx.bot, user.id)
@@ -448,6 +454,7 @@ async def procesar(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("¡Ahí tienes! Si quieres ver más, solo dime 😊")
         elif ya_vio == '100':
             await update.message.reply_text("¡Ya te mandé todas! ¿Te animas? 😊")
+        await refrescar_followup(ctx, user.id)
         return
 
     # MIA (Groq)
@@ -460,9 +467,11 @@ async def procesar(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await entregar_cuenta(update, ctx)
             return
         await update.message.reply_text(resp)
+        await refrescar_followup(ctx, user.id)
     else:
         await update.message.reply_text("Déjame pasar tu mensaje al equipo, te ayudamos pronto 😊")
         await admin_msg(ctx, f"🚨 *Escalación*\n👤 {user.full_name} (`{user.id}`)\n💬 _{texto}_\n`/responder {user.id} msg`")
+        await refrescar_followup(ctx, user.id)
 
 
 # ---- ENTREGA CUENTA ----
